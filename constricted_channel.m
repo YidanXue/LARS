@@ -3,6 +3,7 @@
 %
 % Yidan Xue, April 2023
 
+% parameters
 delta = 1;
 lambda = 0.6;
 h0 = 1;
