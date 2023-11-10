@@ -142,7 +142,7 @@ function [psi,uv,p,omega,f,g] = makefuns(c,Hes,ctr)  % make function handles
 cc = c(1:end/2) + 1i*c(end/2+1:end);
 reshaper = @(str) @(z) reshape(fh(str,z(:),cc,Hes,ctr),size(z));
   psi = reshaper('psi');    uv = reshaper('uv');    p = reshaper('p');
-omega = reshaper('omega');   f = reshaper('f');   g = reshaper('g');
+omega = reshaper('omega');   f = reshaper('f');     g = reshaper('g');
 end
 
 function fh = fh(i,Z,cc,Hes,ctr)
