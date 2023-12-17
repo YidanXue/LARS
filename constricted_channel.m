@@ -4,8 +4,9 @@
 % Yidan Xue, April 2023
 
 % parameters
+tic
 delta = 1;
-lambda = 0.6;
+lambda = 0.5;
 h0 = 1;
 L0 = h0/delta;
 w1 = -2*L0;
@@ -59,6 +60,7 @@ A = [A1; A2]; rhs = [rhs1; rhs2];
 
 % solution and plot
 c = A\rhs;                                % solve least-squares problem
+toc
 [psi,uv,p,omega,f,g] = makefuns(c,Hes,Pol);     % make function handles
 plotcontours(Z,psi,uv,p,Pol)                  % plotting
 
@@ -163,19 +165,19 @@ function plotcontours(Z,psi,uv,p,varargin)   % contour plot
      MS = 'markersize'; LW = 'linewidth';
      x1 = min(real(Z)); x2 = max(real(Z)); xm = mean([x1 x2]); dx = diff([x1 x2]);
      y1 = min(imag(Z)); y2 = max(imag(Z)); ym = mean([y1 y2]); dy = diff([y1 y2]);
-     dmax = max(dx,dy); nx = ceil(600*dx/dmax); ny = ceil(600*dy/dmax);
+     dmax = max(dx,dy); nx = ceil(300*dx/dmax); ny = ceil(300*dy/dmax); % increase 300 to 600 for better plotting
      x = linspace(x1,x2,nx); y = linspace(y1,y2,ny);
      [xx,yy] = meshgrid(x,y); zz = xx + 1i*yy;
      inpolygonc = @(z,w) inpolygon(real(z),imag(z),real(w),imag(w));
      outside = ~inpolygonc(zz,Z);
      uu = abs(uv(zz)); uu(outside) = NaN; umax = max(max(uu));
      pcolor(x,y,uu), hold on, colormap(gca,parula)
-     shading interp, c=colorbar, clim([0 umax])
+     shading interp, c=colorbar; clim([0 umax])
      c.Label.String = 'Velocity magnitude';
      c.Label.FontSize = 12;
      plot(Z([1:end 1]),'k',LW,.8)
      pp = psi(zz); pp(outside) = NaN; pmin = min(min(pp)); pmax = max(max(pp));
-     lev = pmin+(.02:.06:.98)*(pmax-pmin);
+     lev = pmin+(1/6:1/6:5/6)*(pmax-pmin);
      contour(x,y,pp,lev,'k',LW,.6)
      if nargin == 5, plot(cell2mat(Pol),'.r',MS,8), end
      hold off, axis([xm+.5*dx*[-1 1] ym+.5*dy*[-1 1]]), axis equal off

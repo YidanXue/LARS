@@ -142,7 +142,7 @@ function [psi,uv,p,omega,f,g] = makefuns(c,Hes,ctr)  % make function handles
 cc = c(1:end/2) + 1i*c(end/2+1:end);
 reshaper = @(str) @(z) reshape(fh(str,z(:),cc,Hes,ctr),size(z));
   psi = reshaper('psi');    uv = reshaper('uv');    p = reshaper('p');
-omega = reshaper('omega');   f = reshaper('f');     g = reshaper('g');
+omega = reshaper('omega');   f = reshaper('f');   g = reshaper('g');
 end
 
 function fh = fh(i,Z,cc,Hes,ctr)
@@ -168,7 +168,7 @@ Z = a_out*exp(2i*pi*(1:mp)'/mp);           % bd pts of the outer cylinder
 Zp = epsilon+a_in*exp(2i*pi*(1:mp)'/mp);   % bd pts of the inner cylinder
 x1 = min(real(Z)); x2 = max(real(Z)); xm = mean([x1 x2]); dx = diff([x1 x2]);
 y1 = min(imag(Z)); y2 = max(imag(Z)); ym = mean([y1 y2]); dy = diff([y1 y2]);
-dmax = max(dx,dy); nx = ceil(400*dx/dmax); ny = ceil(400*dy/dmax);
+dmax = max(dx,dy); nx = ceil(300*dx/dmax); ny = ceil(300*dy/dmax);
 x = linspace(x1,x2,nx); y = linspace(y1,y2,ny);
 [xx,yy] = meshgrid(x,y); zz = xx + 1i*yy;
 inpolygonc = @(z,w) inpolygon(real(z),imag(z),real(w),imag(w));
@@ -178,7 +178,7 @@ plot(Z([1:end 1]),'k','linewidth',.8), hold on
 plot(Zp([1:end 1]),'k','linewidth',.8)
 pp = psi(zz); pp(outside1) = NaN; pp(outside2) = NaN; 
 pmin = min(min(pp)); pmax = max(max(pp));
-lev = pmin+[linspace(0.1,0.9,13) 0.96 0.99 0.999]*(pmax-pmin);
+lev = pmin+(.1:.1:.9)*(pmax-pmin);
 contour(x,y,pp,lev,'k','linewidth',.6)
 hold off, axis([xm+.5*dx*[-1 1] ym+.5*dy*[-1 1]]), axis equal off
 end
