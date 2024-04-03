@@ -1,4 +1,4 @@
-Repository for the paper "Computation of 2D Stokes flows via lightning and AAA rational approximation" by Yidan Xue, Sarah L. Waters and Lloyd N. Trefethen. The arXiv preprint can be found at https://arxiv.org/abs/2306.13545.
+Repository for the paper "Computation of two-dimensional Stokes flows via lightning and AAA rational approximation" by Yidan Xue, Sarah L. Waters and Lloyd N. Trefethen. The arXiv preprint can be found at https://arxiv.org/abs/2306.13545. The SISC publication can be found at https://doi.org/10.1137/23M1576876.
 
 The codes need to be run in MATLAB or Octave, its free alternative. The recommended version is MATLAB_R2023b. The user needs to have aaa.m in the same folder (or add it in the default MATLAB path) for the AAA rational approximation. The easist way to do this is to download Chebfun at https://www.chebfun.org. 
 
