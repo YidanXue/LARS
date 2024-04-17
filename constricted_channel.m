@@ -138,26 +138,26 @@ A1 = zeros(M,N); rhs1 = zeros(M,1);
 A2 = zeros(M,N); rhs2 = zeros(M,1);
 end
 
-function [psi,uv,p,omega,f,g] = makefuns(c,Hes,varargin)  % make function handles
-Pol = []; if nargin == 3, Pol = varargin{1}; end
-cc = c(1:end/2) + 1i*c(end/2+1:end);
-reshaper = @(str) @(z) reshape(fh(str,z(:),cc,Hes,Pol),size(z));
-  psi = reshaper('psi');    uv = reshaper('uv');    p = reshaper('p');
-omega = reshaper('omega');   f = reshaper('f');     g = reshaper('g');
+function [psi,uv,p,omega,f,g] = makefuns(c,Hes,varargin)
+    Pol = []; if nargin == 3, Pol = varargin{1}; end
+    cc = c(1:end/2) + 1i*c(end/2+1:end);
+    reshaper = @(str) @(z) reshape(fh(str,z(:),cc,Hes,Pol),size(z));
+      psi = reshaper('psi');    uv = reshaper('uv');    p = reshaper('p');
+    omega = reshaper('omega');   f = reshaper('f');     g = reshaper('g');
 end
 
 function fh = fh(i,Z,cc,Hes,Pol)
-[R0,R1] = VAeval(Z,Hes,Pol);
-N = size(R0,2);
-cf = cc(1:N); cg = cc(N+(1:N));
-switch i
-   case   'f'  , fh = R0*cf;
-   case   'g'  , fh = R0*cg;
-   case  'psi' , fh = imag(conj(Z).*(R0*cf) + R0*cg);
-   case   'uv' , fh = Z.*conj(R1*cf) - R0*cf + conj(R1*cg); 
-   case   'p'  , fh = real(4*R1*cf);                        
-   case 'omega', fh = imag(-4*R1*cf);                       
-end
+    [R0,R1] = VAeval(Z,Hes,Pol);
+    N = size(R0,2);
+    cf = cc(1:N); cg = cc(N+(1:N));             % coefficients in two Goursat funcs.
+    switch i
+       case   'f'  , fh = R0*cf;
+       case   'g'  , fh = R0*cg;
+       case  'psi' , fh = imag(conj(Z).*(R0*cf) + R0*cg);
+       case   'uv' , fh = Z.*conj(R1*cf) - R0*cf + conj(R1*cg); 
+       case   'p'  , fh = real(4*R1*cf);                        
+       case 'omega', fh = imag(-4*R1*cf);                       
+    end
 end
 
 function plotcontours(Z,psi,uv,p,varargin)   % contour plot
@@ -165,7 +165,7 @@ function plotcontours(Z,psi,uv,p,varargin)   % contour plot
      MS = 'markersize'; LW = 'linewidth';
      x1 = min(real(Z)); x2 = max(real(Z)); xm = mean([x1 x2]); dx = diff([x1 x2]);
      y1 = min(imag(Z)); y2 = max(imag(Z)); ym = mean([y1 y2]); dy = diff([y1 y2]);
-     dmax = max(dx,dy); nx = ceil(300*dx/dmax); ny = ceil(300*dy/dmax); % increase 300 to 600 for better plotting
+     dmax = max(dx,dy); nx = ceil(300*dx/dmax); ny = ceil(300*dy/dmax);
      x = linspace(x1,x2,nx); y = linspace(y1,y2,ny);
      [xx,yy] = meshgrid(x,y); zz = xx + 1i*yy;
      inpolygonc = @(z,w) inpolygon(real(z),imag(z),real(w),imag(w));
