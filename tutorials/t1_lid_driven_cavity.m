@@ -41,13 +41,13 @@ set(gcf,'units','inches','position',[0,0,8,6])
 % dots.
 m = 300; s = tanh(linspace(-16,16,m));      % clustered pts in (-1,1)
 Z = [1i-s -1-1i*s -1i+s 1+1i*s].';          % boundary pts
-delete(bd)
-bdp = plot(Z,'.k',MS,9);
+delete(bd), bdp = plot(Z,'.k',MS,9);
 
 %% Cluster poles near corners
 % We now cluster the poles of the rational function exponentially near the
-% corners. The |cluster| function clusters n points exponentially in
-% (0,1]. The poles are represented using red dots.
+% corners. Usually dozens of poles per corner are sufficient to achieve 6-digt
+% accuracy. The value 1.5 here is the characteristic length, which can vary
+% in different problems for optimal convergence.
 np = 24;                                    % poles per corner
 dk = 1.5*cluster(np); dc = 1+dk;            % tapered exponential clustering
 Pol = {w(1)*dc, w(2)*dc, w(3)*dc, w(4)*dc};
@@ -62,7 +62,7 @@ n = 24;                                     % Polynomial degree
 Hes = VAorthog(Z,n,Pol);                    % Arnoldi Hessenberg matrices
 [A1,rhs1,A2,rhs2,PSI,U,V] = makerows(Z,n,Hes,Pol);  % Linear system for boundary conditions
 
-%% Impose 2 boundary conditions for each boundary point
+%% Impose two boundary conditions for each boundary point
 top = 1:m; lft = m+1:2*m; bot = 2*m+1:3*m; rgt = 3*m+1:4*m;
 A1(top,:) = PSI(top,:); rhs1(top) = 0;   
 A2(top,:) =   U(top,:); rhs2(top) = 1;
