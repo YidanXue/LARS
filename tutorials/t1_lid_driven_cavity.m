@@ -1,11 +1,23 @@
 %% T1. lid-driven cavity
-% In this example, we compute Stokes flow in a lid-driven cavity. This
-% example is from the lightning Stokes solver paper: P. D. Brubeck and L.
-% N. Trefethen, _Lightning Stokes solver_, SIAM J. Sci. Comput., 44 (2022),
-% pp. A1205-A1226. Based on this classic example, we will introduce some
-% basic rational approximation techniques for computing Stokes flows.
 %
 % Yidan Xue, Apr 2024, Oxford
+%
+% In the first tutorial, we compute Stokes flow in a lid-driven cavity.
+% Using this classic example, we will introduce some basic rational
+% approximation techniques and the general steps to perform Stokes flow
+% computations:
+%
+% # Find the singularities of the domain geometry and place poles;
+% # Construct the rational function basis for two Goursat functions;
+% # Compute a least squares problem to obtain the coefficients.
+%
+% This example is from the lightning Stokes solver paper: P. D. Brubeck and
+% L. N. Trefethen, _Lightning Stokes solver_, SIAM J. Sci. Comput., 44
+% (2022), pp. A1205-A1226. For more information on the lightning algorithm
+% for rational approximation, see A. Gopal and L. N. Trefethen, _Solving
+% Laplace problems with corner singularities via rational functions_, SIAM
+% J. Numer. Anal., 57 (2019), pp. 2074-2094.
+
 
 %% Define the fluid problem
 warning off, LW = 'linewidth'; MS = 'markersize'; FS = 'fontsize'; fs = 16;
@@ -24,7 +36,7 @@ fontsize(gca,fs,'points')
 set(gcf,'units','inches','position',[0,0,8,6])
 
 %% Select sample points along the boundary
-% Here we cluster sample points exponentially towards four corners, based
+% We cluster sample points exponentially towards four corners, based
 % on the lightning algorithm. The sample points are represented by black
 % dots.
 m = 300; s = tanh(linspace(-16,16,m));      % clustered pts in (-1,1)
