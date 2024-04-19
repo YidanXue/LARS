@@ -180,24 +180,25 @@ function [A,rhs] = rowweighting(A,rhs,Z,w)
 end
 
 function [psi,uv,p,omega,f,g] = makefuns(c,Hes,varargin)  % make function handles
-Pol = []; if nargin == 3, Pol = varargin{1}; end
-cc = c(1:end/2) + 1i*c(end/2+1:end);
-reshaper = @(str) @(z) reshape(fh(str,z(:),cc,Hes,Pol),size(z));
-  psi = reshaper('psi');    uv = reshaper('uv');    p = reshaper('p');
-omega = reshaper('omega');   f = reshaper('f');   g = reshaper('g');
+    Pol = []; if nargin == 3, Pol = varargin{1}; end
+    cc = c(1:end/2) + 1i*c(end/2+1:end);
+    reshaper = @(str) @(z) reshape(fh(str,z(:),cc,Hes,Pol),size(z));
+      psi = reshaper('psi');    uv = reshaper('uv');    p = reshaper('p');
+    omega = reshaper('omega');   f = reshaper('f');   g = reshaper('g');
 end
+
 function fh = fh(i,Z,cc,Hes,Pol)
-[R0,R1] = VAeval(Z,Hes,Pol);
-N = size(R0,2);
-cf = cc(1:N); cg = cc(N+(1:N));
-switch i
-   case   'f'  , fh = R0*cf;
-   case   'g'  , fh = R0*cg;
-   case  'psi' , fh = imag(conj(Z).*(R0*cf) + R0*cg);
-   case   'uv' , fh = Z.*conj(R1*cf) - R0*cf + conj(R1*cg); 
-   case   'p'  , fh = real(4*R1*cf);                        
-   case 'omega', fh = imag(-4*R1*cf);                       
-end
+    [R0,R1] = VAeval(Z,Hes,Pol);
+    N = size(R0,2);
+    cf = cc(1:N); cg = cc(N+(1:N));
+    switch i
+       case   'f'  , fh = R0*cf;
+       case   'g'  , fh = R0*cg;
+       case  'psi' , fh = imag(conj(Z).*(R0*cf) + R0*cg);
+       case   'uv' , fh = Z.*conj(R1*cf) - R0*cf + conj(R1*cg); 
+       case   'p'  , fh = real(4*R1*cf);                        
+       case 'omega', fh = imag(-4*R1*cf);                       
+    end
 end
 
 function plotcontours(w,Z,psi,uv,varargin)   % contour plot

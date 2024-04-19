@@ -100,11 +100,11 @@ set(gcf,'units','inches','position',[0,0,8,6])
 
 %% Functions
 function [Hes,R] = VAorthog(Z,n,varargin)   % VA orthogonalization
-% Input:    Z = column vector of sample points
-%           n = degree of polynomial (>=0)
-%           Pol = vector of poles
-% Output:   Hes = cell array of Hessenberg matrices (length 1+length(Pol))
-%           R = matrix of basis vectors
+    % Input:    Z = column vector of sample points
+    %           n = degree of polynomial (>=0)
+    %           Pol = vector of poles
+    % Output:   Hes = cell array of Hessenberg matrices (length 1+length(Pol))
+    %           R = matrix of basis vectors
     M = length(Z); Pol = []; if nargin == 3, Pol = varargin{1}; end
     % First orthogonalize the polynomial part
     Q = ones(M,1); H = zeros(n+1,n);
@@ -128,11 +128,11 @@ function [Hes,R] = VAorthog(Z,n,varargin)   % VA orthogonalization
 end
 
 function [R0,R1] = VAeval(Z,Hes,varargin)   % Vand.+Arnoldi basis construction
-% Input:    Z = column vector of sample points
-%           n = degree of polynomial (>=0)
-%           Pol = vector of poles
-% Output:   R0 = matrix of basis vectors for functions
-%           R1 = matrix of basis vectors for derivatives
+    % Input:    Z = column vector of sample points
+    %           n = degree of polynomial (>=0)
+    %           Pol = vector of poles
+    % Output:   R0 = matrix of basis vectors for functions
+    %           R1 = matrix of basis vectors for derivatives
     M = length(Z); Pol = []; if nargin == 3, Pol = varargin{1}; end
     H = Hes{1}; Hes(1) = []; n = size(H,2);
     Q = ones(M,1); D = zeros(M,1);
@@ -175,6 +175,7 @@ function [psi,uv,p,omega,f,g] = makefuns(c,Hes,varargin)  % make function handle
       psi = reshaper('psi');    uv = reshaper('uv');    p = reshaper('p');
     omega = reshaper('omega');   f = reshaper('f');   g = reshaper('g');
 end
+
 function fh = fh(i,Z,cc,Hes,Pol)
     [R0,R1] = VAeval(Z,Hes,Pol);
     N = size(R0,2);
