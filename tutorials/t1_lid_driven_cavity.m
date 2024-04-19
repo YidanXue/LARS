@@ -201,27 +201,27 @@ end
 end
 
 function plotcontours(w,Z,psi,uv,varargin)   % contour plot
-     Pol = []; if nargin == 5, Pol = varargin{1}; end
-     MS = 'markersize'; LW = 'linewidth'; CO = 'color';
-     x1 = min(real(Z)); x2 = max(real(Z)); xm = mean([x1 x2]); dx = diff([x1 x2]);
-     y1 = min(imag(Z)); y2 = max(imag(Z)); ym = mean([y1 y2]); dy = diff([y1 y2]);
-     dmax = max(dx,dy); nx = ceil(200*dx/dmax); ny = ceil(200*dy/dmax);
-     x = linspace(x1,x2,nx); y = linspace(y1,y2,ny);
-     [xx,yy] = meshgrid(x,y); zz = xx + 1i*yy;
-     inpolygonc = @(z,w) inpolygon(real(z),imag(z),real(w),imag(w));
-     dZw = min(abs(Z-w.'),[],2);  % distance to nearest corner
-     ii = find(dZw>5e-3); outside = ~inpolygonc(zz,Z(ii));
-     uu = abs(uv(zz)); uu(outside) = NaN; umax = max(max(uu));
-     pcolor(x,y,uu), hold on, colormap(gca,parula)
-     shading interp, c=colorbar(); caxis([0 umax])
-     c.Label.FontSize = 12;  
-     c.Label.String = 'Velocity magnitude';
-     plot(Z([1:end 1]),'k',LW,.8)
-     pp = psi(zz); pp(outside) = NaN; pmin = min(min(pp)); pmax = max(max(pp));
-     lev = pmin+(.1:.1:.9)*(pmax-pmin);
-     contour(x,y,pp,lev,'k',LW,.6)
-     psiratio = pmin/pmax; fac = max(psiratio,1/psiratio);
-     if sign(fac) == -1     % Moffatt eddies in yellow
+    Pol = []; if nargin == 5, Pol = varargin{1}; end
+    MS = 'markersize'; LW = 'linewidth'; CO = 'color';
+    x1 = min(real(Z)); x2 = max(real(Z)); xm = mean([x1 x2]); dx = diff([x1 x2]);
+    y1 = min(imag(Z)); y2 = max(imag(Z)); ym = mean([y1 y2]); dy = diff([y1 y2]);
+    dmax = max(dx,dy); nx = ceil(200*dx/dmax); ny = ceil(200*dy/dmax);
+    x = linspace(x1,x2,nx); y = linspace(y1,y2,ny);
+    [xx,yy] = meshgrid(x,y); zz = xx + 1i*yy;
+    inpolygonc = @(z,w) inpolygon(real(z),imag(z),real(w),imag(w));
+    dZw = min(abs(Z-w.'),[],2);  % distance to nearest corner
+    ii = find(dZw>5e-3); outside = ~inpolygonc(zz,Z(ii));
+    uu = abs(uv(zz)); uu(outside) = NaN; umax = max(max(uu));
+    pcolor(x,y,uu), hold on, colormap(gca,parula)
+    shading interp, c=colorbar(); caxis([0 umax])
+    c.Label.FontSize = 12;  
+    c.Label.String = 'Velocity magnitude';
+    plot(Z([1:end 1]),'k',LW,.8)
+    pp = psi(zz); pp(outside) = NaN; pmin = min(min(pp)); pmax = max(max(pp));
+    lev = pmin+(.1:.1:.9)*(pmax-pmin);
+    contour(x,y,pp,lev,'k',LW,.6)
+    psiratio = pmin/pmax; fac = max(psiratio,1/psiratio);
+    if sign(fac) == -1     % Moffatt eddies in yellow
         lev1 = lev(1:2:end)*fac;
         contour(x,y,pp,lev1,'y',LW,.55)
         if abs(fac) > 1e4   % second eddies (white)
@@ -230,6 +230,6 @@ function plotcontours(w,Z,psi,uv,varargin)   % contour plot
         if abs(fac) > 1e3   % third eddies (yellow)
            lev3 = lev2*fac; contour(x,y,pp,lev3,'y',LW,.45)
         end 
-     end
-     hold off, axis([xm+.7*dx*[-1 1] ym+.7*dy*[-1 1]])
+    end
+    hold off, axis([xm+.8*dx*[-1 1] ym+.8*dy*[-1 1]])
 end

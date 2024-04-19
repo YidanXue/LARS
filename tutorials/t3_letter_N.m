@@ -1,24 +1,23 @@
-%% T2. Expanded channel
+%% T3. Letter 'N'
 %
 % Yidan Xue, Apr 2024, Oxford
 %
-% In this tutorial, we apply the lightning algorithm to another Stokes flow
-% problem. This tutorial shows how easy we can apply the solver for various
-% scenarios with very minor modifications. With this objective in mind, we
-% will copy and paste most codes and functions from the first tutorial.
+% In this tutorial, we compute Stokes flow in a letter 'N' (which is part
+% of the Stokes alphabet project I have been developed). We will use this
+% example to show that sometimes we need to adjust the taper constant in
+% the |cluster| function for some nonconvex geometry when computing Stokes
+% flow.
 
 %% Define the fluid problem
-% We consider the Stokes flow through an expanded channel. Two parabolic
-% velocity profiles are imposed on left and right. A zero-velocity boundary
-% condition is imposed on top and bottom. We first determine the corner
-% locations of the domain in a vector |w|, which are key to determine the
-% domain geometry and apply the lightning algorithm.
+% We consider the Stokes flow through a letter 'N'. Two parabolic velocity
+% profiles are imposed on inlet and outlet. A zero-velocity boundary
+% condition is imposed on the walls.
 warning off, LW = 'linewidth'; MS = 'markersize'; FS = 'fontsize'; fs = 16;
-h = 1; l = 2; theta = pi/4;                 % geometrical parameters
-tant = tan(theta); H = l*tant+h;            % expanded channel width
-w1 = -2*l+1i*h; w2 = -2*l-1i*h; w3 = -1i*h; w4 = l-1i*H;
-w5 = 3*l-1i*H; w6 = 3*l+1i*H; w7 = l+1i*H; w8 = 1i*h;
-w = [w1; w2; w3; w4; w5; w6; w7; w8];       % corner locations
+w1 = -2.5+3.5i; w2 = -2.5-3.5i; w3 = -1.5-3.5i;
+w4 = -1.5+1.5i; w5 = 1.5-3.5i; w6 = 2.5-3.5i;
+w7 = 2.5+3.5i; w8 = 1.5+3.5i; w9 = 1.5-1.5i;
+w10 = -1.5+3.5i;
+w = [w1; w2; w3; w4; w5; w6; w7; w8; w9; w10];
 bd = plot(w([1:end 1]),'k',LW,1.2); hold on
 set(gcf,'units','inches','position',[0,0,8,6])
 axis equal off
@@ -27,40 +26,88 @@ axis equal off
 m = 300; s = tanh(linspace(-16,16,m));      % clustered pts in (-1,1)
 Z = [(w1+w2)/2+(w2-w1)/2*s (w2+w3)/2+(w3-w2)/2*s (w3+w4)/2+(w4-w3)/2*s...
     (w4+w5)/2+(w5-w4)/2*s (w5+w6)/2+(w6-w5)/2*s (w6+w7)/2+(w7-w6)/2*s...
-    (w7+w8)/2+(w8-w7)/2*s (w8+w1)/2+(w1-w8)/2*s].';     % boundary pts
+    (w7+w8)/2+(w8-w7)/2*s (w8+w9)/2+(w9-w8)/2*s (w9+w10)/2+(w10-w9)/2*s...
+    (w10+w1)/2+(w1-w10)/2*s].';             % boundary pts
 delete(bd), bdp = plot(Z,'.k',MS,9);
 
 %% Cluster poles near corners
-% This time we cluster the poles along the exterior bisectors of the four
-% corners in the middle. For left and right openings, the parabolic
-% velocity profile (fully developed channel flow) usually doesn't require
-% poles nearby. Note that we now use the inlet/outlet channel length for
-% the characteristic length.
+% We first use the original cluster function.
 np = 24;                                    % poles per corner
-dk = l*cluster(np);
-t3 = -pi/2-theta/2; t4 = t3; t7 = pi/2+theta/2; t8 = t7;
-Pol = {w(3)+exp(1i*t3)*dk, w(4)+exp(1i*t4)*dk,...
-    w(7)+exp(1i*t7)*dk, w(8)+exp(1i*t8)*dk};    % the poles
+l = 1.5; dk = l*cluster(np);
+t1 = (angle(w10-w1)+angle(w2-w1))/2+pi;
+t4 = (angle(w3-w4)+angle(w5-w4))/2;
+t5 = (angle(w4-w5)+angle(w6-w5))/2+pi;
+t6 = (angle(w5-w6)+angle(w7-w6))/2+pi;
+t9 = (angle(w8-w9)+angle(w10-w9))/2;
+t10 = (angle(w9-w10)+angle(w1-w10))/2;
+Pol = {w(1)+exp(1i*t1)*dk,w(4)+exp(1i*t4)*dk,w(5)+exp(1i*t5)*dk,...
+    w(6)+exp(1i*t6)*dk,w(9)+exp(1i*t9)*dk,w(10)+exp(1i*t10)*dk};
 plot(cell2mat(Pol),'.r',MS,8);
 
 %% VA orthogonalization, boundary conditions, and solve the least squares problem
-% Most of these are exactly the same as the previous tutorial. There can be
-% Moffatt eddies near the obtuse angle corners, which are not visualised
-% here. There are also a few poles lie outside the plot.
+% Most of these are exactly the same as the previous tutorial. For
+% simplicity, this time we impose constant pressure and unidirectional flow
+% conditions on inlet and outlet. This requires some minor changes in
+% |makerows| to add pressure 'P' as a function output.
 n = 24;                                     % polynomial degree
 Hes = VAorthog(Z,n,Pol);                    % Arnoldi Hessenberg matrices
-[A1,rhs1,A2,rhs2,PSI,U,V] = makerows(Z,n,Hes,Pol);  % linear system for boundary conditions
+[A1,rhs1,A2,rhs2,PSI,U,V,P] = makerows(Z,n,Hes,Pol);  % linear system for boundary conditions
 
-lft = 1:m; bot = m+1:4*m; rgt = 4*m+1:5*m; top = 5*m+1:8*m;
-Q = 1; U1 = (3*Q)/(4*h^3); U2 = (h/H)^3*U1;         % we set flux Q = 1
-A1(lft,:) =   U(lft,:); rhs1(lft) = U1*(h^2-imag(Z(lft)).^2);  
-A2(lft,:) =   V(lft,:); rhs2(lft) = 0;
-A1(bot,:) =   U(bot,:); rhs1(bot) = 0;  
-A2(bot,:) =   V(bot,:); rhs2(bot) = 0;
-A1(rgt,:) =   U(rgt,:); rhs1(rgt) = U2*(H^2-imag(Z(rgt)).^2);
-A2(rgt,:) =   V(rgt,:); rhs2(rgt) = 0;
-A1(top,:) =   U(top,:); rhs1(top) = 0;  
-A2(top,:) =   V(top,:); rhs2(top) = 0;
+inl = m+1:2*m; out = 6*m+1:7*m; P1 = 100; P2 = 0;
+A1 =   U; rhs1 = zeros(length(Z),1);
+A2 =   V; rhs2 = zeros(length(Z),1);
+A2(inl,:) =   P(inl,:); rhs2(inl) = P1;
+A2(out,:) =   P(out,:); rhs2(out) = P2;
+A = [A1; A2]; rhs = [rhs1; rhs2];
+
+[A,rhs] = rowweighting(A,rhs,Z,w);
+c = A\rhs;                                  % compute a least squares problem
+[psi,uv,p,omega,f,g] = makefuns(c,Hes,Pol);
+delete(bdp), plotcontours(w,Z,psi,uv,Pol)
+
+%% Errors on the boundary
+% It is clear that the default settings don't work well for this problem.
+error = A*c-rhs;                            % weighted errors on the boundary
+semilogy(abs(error),'.',MS,8)
+title('Weighted errors on the boundary')
+grid on, shg
+fontsize(gcf, fs, "points")
+set(gcf,'units','inches','position',[0,0,8,6])
+
+%% Taper constant and characteristic length
+% Although increasing the pole number per corner and the polynomial degree
+% may improve the convergence of this problem, we keep these settings and
+% adjust the taper constant and characteristic length instead. Note that
+% sometimes we do need to increase the degree of freedom of the least
+% squares problem. Always increase the pole number first before increasing
+% the polynomial degree.
+bdp = plot(Z([1:end 1]),'.k',MS,9); hold on
+set(gcf,'units','inches','position',[0,0,8,6])
+axis equal off
+
+% Here we create a new function |cluster_new|, which allows us to adjust
+% the taper constant $\sigma$. From my numerical exploration, a robust
+% setting might be $\sigma=4,2,1$, when the exterior angle is greater than
+% $\pi/2$, from $\pi/2$ to $\pi/4$, and smaller than $\pi/4$.
+np = 24;                                    % poles per corner
+l = 5; dk1 = l*cluster_new(np,4); dk2 = l*cluster_new(np,1);
+Pol = {w(1)+exp(1i*t1)*dk1,w(4)+exp(1i*t4)*dk2,w(5)+exp(1i*t5)*dk1,...
+    w(6)+exp(1i*t6)*dk1,w(9)+exp(1i*t9)*dk2,w(10)+exp(1i*t10)*dk1};
+plot(cell2mat(Pol),'.r',MS,8);
+
+%% VA orthogonalization, boundary conditions, and solve the least squares problem
+% Without adding any pole, we are now able to compute this complex problem
+% to a few digits. However, one needs to add more poles for a few more
+% digits, if they want to visualise the Moffatt eddies.
+n = 24;                                     % polynomial degree
+Hes = VAorthog(Z,n,Pol);                    % Arnoldi Hessenberg matrices
+[A1,rhs1,A2,rhs2,PSI,U,V,P] = makerows(Z,n,Hes,Pol);  % linear system for boundary conditions
+
+inl = m+1:2*m; out = 6*m+1:7*m; P1 = 100; P2 = 0;
+A1 =   U; rhs1 = zeros(length(Z),1);
+A2 =   V; rhs2 = zeros(length(Z),1);
+A2(inl,:) =   P(inl,:); rhs2(inl) = P1;
+A2(out,:) =   P(out,:); rhs2(out) = P2;
 A = [A1; A2]; rhs = [rhs1; rhs2];
 
 [A,rhs] = rowweighting(A,rhs,Z,w);
@@ -79,6 +126,10 @@ set(gcf,'units','inches','position',[0,0,8,6])
 %% Functions
 function d = cluster(n)                     
     nc = ceil(n); d = exp(4*(sqrt(nc:-1:1)-sqrt(nc)));
+end
+
+function d = cluster_new(n,sigma)                     
+    nc = ceil(n); d = exp(sigma*(sqrt(nc:-1:1)-sqrt(nc)));
 end
 
 function [Hes,R] = VAorthog(Z,n,varargin)   % VA orthogonalization
@@ -137,14 +188,15 @@ function [R0,R1] = VAeval(Z,Hes,varargin)   % Vand.+Arnoldi basis construction
     end
 end
 
-function [A1,rhs1,A2,rhs2,PSI,U,V] = makerows(Z,n,Hes,varargin)
+function [A1,rhs1,A2,rhs2,PSI,U,V,P] = makerows(Z,n,Hes,varargin)
     Pol = []; if nargin == 4, Pol = varargin{1}; end
     [R0,R1] = VAeval(Z,Hes,Pol);
-    M = length(Z); N = 4*size(R0,2);
+    M = length(Z); N = 4*size(R0,2);  zero = 0*R0;
     cZ = spdiags(conj(Z),0,M,M);                    % a diag. matrix of conj(Z)
     PSI = [cZ*R0 R0]; PSI = [imag(PSI) real(PSI)];  % stream function
     U = [cZ*R1-R0 R1]; U = [real(U) -imag(U)];      % horizontal velocity
     V = [-cZ*R1-R0 -R1]; V = [imag(V) real(V)];     % vertical velocity
+    P = [4*R1 zero]; P = [real(P) -imag(P)];        % pressure
     A1 = zeros(M,N); rhs1 = zeros(M,1);
     A2 = zeros(M,N); rhs2 = zeros(M,1);
 end
@@ -162,7 +214,7 @@ function [psi,uv,p,omega,f,g] = makefuns(c,Hes,varargin)  % make function handle
     reshaper = @(str) @(z) reshape(fh(str,z(:),cc,Hes,Pol),size(z));
       psi = reshaper('psi');    uv = reshaper('uv');    p = reshaper('p');
     omega = reshaper('omega');   f = reshaper('f');   g = reshaper('g');
-    end
+end
 function fh = fh(i,Z,cc,Hes,Pol)
     [R0,R1] = VAeval(Z,Hes,Pol);
     N = size(R0,2);
