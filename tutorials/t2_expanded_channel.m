@@ -1,91 +1,68 @@
-%% T1. Lid-driven cavity
+%% T2. Expanded channel
 %
 % Yidan Xue, Apr 2024, Oxford
 %
-% In the first tutorial, we compute Stokes flow in a lid-driven cavity.
-% Using this classic example, we will introduce some basic rational
-% approximation techniques and the general steps to perform Stokes flow
-% computations:
-%
-% # Find the singularities of the domain geometry and place poles;
-% # Construct the rational function basis for two Goursat functions;
-% # Compute a least squares problem to obtain the coefficients.
-%
-% This simulation is from the lightning Stokes solver paper: P. D. Brubeck
-% and L. N. Trefethen, _Lightning Stokes solver_, SIAM J. Sci. Comput., 44
-% (2022), pp. A1205-A1226. For more information on the lightning algorithm
-% for rational approximation, see A. Gopal and L. N. Trefethen, _Solving
-% Laplace problems with corner singularities via rational functions_, SIAM
-% J. Numer. Anal., 57 (2019), pp. 2074-2094.
+% In this tutorial, we apply the lightning algorithm to another Stokes flow
+% problem. This tutorial shows how easy we can apply the solver for various
+% scenarios with very minor modifications. With this objective in mind, we
+% will copy and paste most codes and functions from the first tutorial.
 
 %% Define the fluid problem
-% As shown in the figure below, we consider the flow of an incompressible
-% and Newtonian fluid in a square domain at low Reynolds numbers. The top
-% lid moves horizontally, while the other boundaries are stationary. When
-% there is no-slip between the domain boundary and the fluid, we can
-% prescribe the fluid velocity on boundaries.
+% We consider the Stokes flow through an expanded channel. Two parabolic
+% velocity profiles are imposed on left and right. A zero-velocity boundary
+% condition is imposed on top and bottom. We first determine the corner
+% locations of the domain in a vector |w|, which are key to determine the
+% domain geometry and apply the lightning algorithm.
 warning off, LW = 'linewidth'; MS = 'markersize'; FS = 'fontsize'; fs = 16;
-w = [1+1i; -1+1i; -1-1i; 1-1i];             % four corners of the domain
+h = 1; l = 2; theta = pi/4;                 % geometrical parameters
+tant = tan(theta); H = l*tant+h;            % expanded channel width
+w1 = -2*l+1i*h; w2 = -2*l-1i*h; w3 = -1i*h; w4 = l-1i*H;
+w5 = 3*l-1i*H; w6 = 3*l+1i*H; w7 = l+1i*H; w8 = 1i*h;
+w = [w1; w2; w3; w4; w5; w6; w7; w8];       % corner locations
 bd = plot(w([1:end 1]),'k',LW,1.2); hold on
-arrow=annotation('arrow',LW,1);
-arrow.Parent=gca;
-arrow.X = [-0.3 0.3];
-arrow.Y = [1.15 1.15];
-text(0,1.3,'$u=1$, $v=0$','interpreter','latex','HorizontalAlignment','center')
-text(1.6,0,'$u=0$, $v=0$','interpreter','latex','HorizontalAlignment','center')
-text(-1.6,0,'$u=0$, $v=0$','interpreter','latex','HorizontalAlignment','center')
-text(0,-1.2,'$u=0$, $v=0$','interpreter','latex','HorizontalAlignment','center')
-axis equal off, axis([-1.4 1.4 -1.4 1.4])
-fontsize(gca,fs,'points')
-set(gcf,'units','inches','position',[0,0,8,6]), hold off
-
-%% Select sample points along the boundary
-% We cluster sample points exponentially towards four corners, based
-% on the lightning algorithm. The sample points are represented by black
-% dots.
-m = 300; s = tanh(linspace(-16,16,m));      % clustered pts in (-1,1)
-Z = [1i-s -1-1i*s -1i+s 1+1i*s].';          % boundary pts
-bdp = plot(Z,'.k',MS,9); hold on
+set(gcf,'units','inches','position',[0,0,8,6])
 axis equal off
 
-%% Cluster poles near corners
-% We now cluster the poles of the rational function exponentially near the
-% corners. Usually dozens of poles per corner are sufficient to achieve 6-digt
-% accuracy. The value 1.5 here is the characteristic length, which can vary
-% in different problems for optimal convergence.
-np = 24;                                    % poles per corner
-dk = 1.5*cluster(np); dc = 1+dk;            % tapered exponential clustering
-Pol = {w(1)*dc, w(2)*dc, w(3)*dc, w(4)*dc};
-plot(cell2mat(Pol),'.r',MS,8);
-axis([-2 2 -2 2]);
+%% Select sample points along the boundary
+m = 300; s = tanh(linspace(-16,16,m));      % clustered pts in (-1,1)
+Z = [(w1+w2)/2+(w2-w1)/2*s (w2+w3)/2+(w3-w2)/2*s (w3+w4)/2+(w4-w3)/2*s...
+    (w4+w5)/2+(w5-w4)/2*s (w5+w6)/2+(w6-w5)/2*s (w6+w7)/2+(w7-w6)/2*s...
+    (w7+w8)/2+(w8-w7)/2*s (w8+w1)/2+(w1-w8)/2*s].';     % boundary pts
+delete(bd), bdp = plot(Z,'.k',MS,9);
 
-%% Vandermonde with Arnoldi orthogonalization
-% Next we construct well-conditioned rational function bases for a
-% polynomial and poles, namely "Runge" and "Newman" terms, using the
-% Vandermonde with Arnoldi (VA) orthogonalization.
+%% Cluster poles near corners
+% This time we cluster the poles along the exterior bisectors of the four
+% corners in the middle. For left and right openings, the parabolic
+% velocity profile (fully developed channel flow) usually doesn't require
+% poles nearby. Note that we now use the inlet/outlet channel length for
+% the characteristic length.
+np = 24;                                    % poles per corner
+dk = l*cluster(np);
+t3 = -pi/2-theta/2; t4 = t3; t7 = pi/2+theta/2; t8 = t7;
+Pol = {w(3)+exp(1i*t3)*dk, w(4)+exp(1i*t4)*dk,...
+    w(7)+exp(1i*t7)*dk, w(8)+exp(1i*t8)*dk};    % the poles
+plot(cell2mat(Pol),'.r',MS,8);
+
+%% VA orthogonalization, boundary conditions, and solve the least squares problem
+% Most of these are exactly the same as the previous tutorial. There can be
+% Moffatt eddies near the obtuse angle corners, which are not visualised
+% here. There are also a few poles lie outside the plot.
 n = 24;                                     % polynomial degree
 Hes = VAorthog(Z,n,Pol);                    % Arnoldi Hessenberg matrices
 [A1,rhs1,A2,rhs2,PSI,U,V] = makerows(Z,n,Hes,Pol);  % linear system for boundary conditions
 
-%% Impose two boundary conditions for each boundary point
-top = 1:m; lft = m+1:2*m; bot = 2*m+1:3*m; rgt = 3*m+1:4*m;
-A1(top,:) = PSI(top,:); rhs1(top) = 0;   
-A2(top,:) =   U(top,:); rhs2(top) = 1;
-A1(lft,:) = PSI(lft,:); rhs1(lft) = 0;
+lft = 1:m; bot = m+1:4*m; rgt = 4*m+1:5*m; top = 5*m+1:8*m;
+Q = 1; U1 = (3*Q)/(4*h^3); U2 = (h/H)^3*U1;         % we set flux Q = 1
+A1(lft,:) =   U(lft,:); rhs1(lft) = U1*(h^2-imag(Z(lft)).^2);  
 A2(lft,:) =   V(lft,:); rhs2(lft) = 0;
-A1(bot,:) = PSI(bot,:); rhs1(bot) = 0;
-A2(bot,:) =   U(bot,:); rhs2(bot) = 0;
-A1(rgt,:) = PSI(rgt,:); rhs1(rgt) = 0;
+A1(bot,:) =   U(bot,:); rhs1(bot) = 0;  
+A2(bot,:) =   V(bot,:); rhs2(bot) = 0;
+A1(rgt,:) =   U(rgt,:); rhs1(rgt) = U2*(H^2-imag(Z(rgt)).^2);
 A2(rgt,:) =   V(rgt,:); rhs2(rgt) = 0;
+A1(top,:) =   U(top,:); rhs1(top) = 0;  
+A2(top,:) =   V(top,:); rhs2(top) = 0;
 A = [A1; A2]; rhs = [rhs1; rhs2];
 
-%% Solution and visualisation
-% After a row weighting (usually only required for domains with sharp
-% corners), we compute a standard least squares problem to obtain the
-% coefficients in the rational functions. Then we construct functions for
-% physical quantities from the approximated Goursat functions, and plot the
-% solution. The evaluation of a required physical quantity at a given point
-% usually only takes several microseconds.
 [A,rhs] = rowweighting(A,rhs,Z,w);
 c = A\rhs;                                  % compute a least squares problem
 [psi,uv,p,omega,f,g] = makefuns(c,Hes,Pol);
@@ -220,16 +197,5 @@ function plotcontours(w,Z,psi,uv,varargin)   % contour plot
      pp = psi(zz); pp(outside) = NaN; pmin = min(min(pp)); pmax = max(max(pp));
      lev = pmin+(.1:.1:.9)*(pmax-pmin);
      contour(x,y,pp,lev,'k',LW,.6)
-     psiratio = pmin/pmax; fac = max(psiratio,1/psiratio);
-     if sign(fac) == -1     % Moffatt eddies in yellow
-        lev1 = lev(1:2:end)*fac;
-        contour(x,y,pp,lev1,'y',LW,.55)
-        if abs(fac) > 1e4   % second eddies (white)
-           lev2 = lev1*fac; contour(x,y,pp,lev2,LW,.5,CO,.99*[1 1 1])
-        end
-        if abs(fac) > 1e3   % third eddies (yellow)
-           lev3 = lev2*fac; contour(x,y,pp,lev3,'y',LW,.45)
-        end 
-     end
      hold off, axis([xm+.7*dx*[-1 1] ym+.7*dy*[-1 1]])
 end
