@@ -1,94 +1,123 @@
-%% T4. Constricted channel
+%% T5. bifurcation
 %
 % Yidan Xue, Apr 2024, Oxford
 %
-% After working through some examples using the lightning Stokes solver, we
-% now compute Stokes flow problems in more complex geometries. For some
-% geometries, we no longer have corners to place poles nearby, so we need
-% to use a new algorithm to place the poles.
-%
-% The AAA algorithm searches for the 'best' or 'near-best' rational
-% approximation of a function on a provided vector of points (usually along
-% the domain boundary). The approximated rational function has poles, which
-% usually matches the locations of the singularities near the boundary,
-% according to the 'crowding phenomenon'. In addition, these poles can also
-% be used to compute Laplace problems, which lead to the AAA-LS algorithm.
-% Since approximating the two Goursat functions are similar to compute two
-% Laplace problems, the AAA-LS algorithm can also be applied to compute
-% Stokes flows.
-%
-% For more information on the AAA algorithm, see Y. Nakatsukasa, O.
-% S&egrave;te, and L. N. Trefethen, _The AAA algorithm for rational
-% approximation_, SIAM J. Sci. Comput., 40 (2018), pp. A1494-A1522. For
-% more information on the AAA-LS algorithm, see S. Costa and L. N.
-% Trefethen, _AAA-least squares rational approximation and solution of
-% Laplace problems_, in European Congress of Mathematics, A.
-% Hujdurovi&#x107; et al., eds., EMS Press, Helsinki, 2023. The |aaa|
-% function for the AAA algorithm can be downloaded from the chebfun package
-% at https://www.chebfun.org.
+% This tutorial is very similar to the last one, but we will now have
+% multiple (asymmetrical) smooth boundaries. In this example, we will run
+% three local AAA approximations for the three boundaries to find the
+% poles.
 
 %% Define the fluid problem
-% We consider the Stokes flow through a smoothly constricted channel. Two
-% parabolic velocity profiles are imposed on inlet and outlet. A
-% zero-velocity boundary condition is imposed on the walls.
-warning off, LW = 'linewidth'; MS = 'markersize'; FS = 'fontsize'; fs = 16;
-delta = 1; lambda = 0.8;
-h0 = 1; L0 = h0/delta;
-w1 = -2*L0-1i*h0; w2 = 2*L0-1i*h0; w3 = 2*L0+1i*h0; w4 = -2*L0+1i*h0;
+% We consider the Stokes flow through a bifurcation with smooth boundaries
+% of B&eacute;zier curves. Parabolic velocity profiles are imposed on
+% inlet(s) and outlet(s). A zero-velocity boundary condition is imposed on the
+% walls.
+Dp = 1; D1 = 0.7; D2 = 0.8; L = 3;
+alpha = 2*pi/5; beta = pi/3;
+sina = sin(alpha); cosa = cos(alpha); tana = tan(alpha);
+sinb = sin(beta);  cosb = cos(beta);  tanb = tan(beta);
+
+wc1 = -L;
+wc2 = L*cosb-1i*L*sinb;
+wc3 = L*cosa+1i*L*sina;
+w1 = (Dp/2-D1/(2*cosa))/tana+Dp/2*1i;
+w2 = wc1+Dp/2*1i;
+w3 = wc1-Dp/2*1i;
+w4 = (Dp/2-D2/(2*cosb))/tanb-Dp/2*1i;
+w5 = wc2-D2/2*sinb-1i*D2/2*cosb;
+w6 = wc2+D2/2*sinb+1i*D2/2*cosb;
+w7x = (D1/cosa+D2/cosb)/(2*(tana+tanb));
+w7y = w7x*tana-D1/(2*cosa);
+w7 = w7x+1i*w7y;
+w8 = wc3+D1/2*sina-1i*D1/2*cosa;
+w9 = wc3-D1/2*sina+1i*D1/2*cosa;
+if alpha == 0 w1 = Dp/2*1i; end
+if beta == 0 w4 = -Dp/2*1i; end
+if alpha == pi/2
+    w7x = D1/2;
+    w7y = -w7x*tanb+D2/(2*cosb);
+    w7 = w7x+1i*w7y;
+end
+
+w = [w1; w2; w3; w4; w5; w6; w7; w8; w9];   % corners
 m = 300;
-s = linspace(-1,1,m+2); s = s(2:end-1);         % equispaced points in (-1,1)     
-ms = linspace(2*L0,-2*L0,m+2); ms = ms(2:end-1);    
-Z = [flip(ms-1i*h0*(1-lambda*cosh(1.4*ms).*sech((pi/2)*sinh(1.4*ms)).^2))...
-    (w2+w3)/2+(w3-w2)/2*s... 
-    ms+1i*h0*(1-lambda*cosh(1.4*ms).*sech((pi/2)*sinh(1.4*ms)).^2) ...
-    (w4+w1)/2+(w1-w4)/2*s].';
+s = linspace(-1,1,m+2); s = s(2:end-1);         % equispaced points in (-1,1)    
+ms = linspace(0,1,m*2); ms1 = ms(1:end/2); ms2 = ms(end/2+1:end);
+Z = [(1-ms2).^3*w9+(3*(1-ms2).^2.*ms2+3*(1-ms2).*ms2.^2)*w1+ms2.^3*w2...
+    (w2+w3)/2+(w3-w2)/2*s (1-ms).^3*w3+(3*(1-ms).^2.*ms+3*(1-ms).*ms.^2)*w4+ms.^3*w5...
+    (w5+w6)/2+(w6-w5)/2*s (1-ms).^3*w6+(3*(1-ms).^2.*ms+3*(1-ms).*ms.^2)*w7+ms.^3*w8...
+    (w8+w9)/2+(w9-w8)/2*s (1-ms1).^3*w9+(3*(1-ms1).^2.*ms1+3*(1-ms1).*ms1.^2)*w1+ms1.^3*w2].';   % boundary pts
+
 bd = plot(Z([1:end 1]),'k',LW,1.2); hold on
 set(gcf,'units','inches','position',[0,0,8,6])
 axis equal off
 
 %% Place the poles using the AAA algorithm
-% Here we approximate the Schwarz function on top and bottom domain
-% boundaries, and use the exterior poles to compute the Stokes flow. We use
-% the Schwarz function, since it is a function depending on the boundary
-% geometry instead of the boundary value. We only use the exterior poles to
-% make sure the Goursat functions are analytic inside the domain. Here the
-% exterior poles are represented using red dots, while the interior poles
-% are represented using blue dots. Only the red dots will be used for
-% the Stokes flow computation.
-bot = 1:m; rgt = m+1:2*m; top = 2*m+1:3*m; lft = 3*m+1:4*m;
+l1 = 1:m; l2 = m+1:2*m; l3 = 2*m+1:3*m;   
+l4 = 3*m+1:4*m; l5 = 4*m+1:5*m; l6 = 5*m+1:6*m;
+l7 = 6*m+1:7*m; l8 = 7*m+1:8*m; l9 = 8*m+1:9*m;
+
+t1 = (angle(w9-w1)+angle(w2-w1))/2;
+t2 = (angle(w1-w2)+angle(w3-w2))/2+pi;
+t3 = (angle(w2-w3)+angle(w4-w3))/2+pi;
+t4 = (angle(w3-w4)+angle(w5-w4))/2+pi;
+t5 = (angle(w4-w5)+angle(w6-w5))/2+pi;
+t6 = (angle(w5-w6)+angle(w7-w6))/2;
+t7 = (angle(w6-w7)+angle(w8-w7))/2;
+t8 = (angle(w7-w8)+angle(w9-w8))/2;
+t9 = (angle(w8-w9)+angle(w1-w9))/2+pi;
+
 inpoly = @(z,w) inpolygon(real(z),imag(z),real(w),imag(w));
-F = conj(Z);
-[r,pol1] = aaa(F(bot),Z(bot),'tol',1e-8);
-jj = inpoly(pol1,Z); Pol1 = pol1(~jj); Polin1 = pol1(jj);
-[r,pol2] = aaa(F(top),Z(top),'tol',1e-8);
-jj = inpoly(pol2,Z); Pol2 = pol2(~jj); Polin2 = pol2(jj);
-Pol = {Pol1,Pol2}; Polin = {Polin1,Polin2};
-h = plot(cell2mat(Polin),'.b',MS,9); plot(cell2mat(Pol),'.r',MS,9)
-axis([-2.5*L0 2.5*L0 -1.5*h0 1.5*h0])
+F = @(z) conj(z);
+[r,pol] = aaa(F,Z([l9 l1]),'tol',1e-8);
+jj = inpoly(pol,Z); pol1 = pol(~jj).';
+[r,pol] = aaa(F,Z([l3 l4]),'tol',1e-8);
+jj = inpoly(pol,Z); pol2 = pol(~jj).';
+[r,pol] = aaa(F,Z([l6 l7]),'tol',1e-8);
+jj = inpoly(pol,Z); pol3 = pol(~jj).';
+Pol={pol1,pol2,pol3};
+plot(cell2mat(Pol),'.r',MS,9)
+x1 = min(real(Z)); x2 = max(real(Z)); xm = mean([x1 x2]); dx = diff([x1 x2]);
+y1 = min(imag(Z)); y2 = max(imag(Z)); ym = mean([y1 y2]); dy = diff([y1 y2]);
+axis([xm+.8*dx*[-1 1] ym+.8*dy*[-1 1]])
 
 %% VA orthogonalization, boundary conditions, and solve the least squares problem
-% These steps are almost the same as the second tutorial. The first
-% difference is that we have the AAA poles intead of the lightning poles in
-% the |Pol| vector. The other difference is that we turn off the row
-% weighting, because we didn't cluster sample points for smooth boundaries.
 n = 24;                                     % polynomial degree
 Hes = VAorthog(Z,n,Pol);                    % Arnoldi Hessenberg matrices
 [A1,rhs1,A2,rhs2,PSI,U,V,P] = makerows(Z,n,Hes,Pol);  % linear system for boundary conditions
 
-Q = 1; U0 = (3*Q)/(4*h0^3);                  % we set flux Q = 1
-A1(lft,:) =   U(lft,:); rhs1(lft) = U0*(h0^2-imag(Z(lft)).^2);  
-A2(lft,:) =   V(lft,:); rhs2(lft) = 0;
-A1(bot,:) =   U(bot,:); rhs1(bot) = 0;  
-A2(bot,:) =   V(bot,:); rhs2(bot) = 0;
-A1(rgt,:) =   U(rgt,:); rhs1(rgt) = U0*(h0^2-imag(Z(rgt)).^2);
-A2(rgt,:) =   V(rgt,:); rhs2(rgt) = 0;
-A1(top,:) =   U(top,:); rhs1(top) = 0;  
-A2(top,:) =   V(top,:); rhs2(top) = 0;
+P0 = 10; P1 = 2; P2 = -2;
+A1(l1,:) =   U(l1,:); rhs1(l1) = 0;  
+A2(l1,:) =   V(l1,:); rhs2(l1) = 0; 
+A1(l2,:) =   P(l2,:); rhs1(l2) = P0;
+A2(l2,:) =   V(l2,:); rhs2(l2) = 0;
+A1(l3,:) =   U(l3,:); rhs1(l3) = 0;  
+A2(l3,:) =   V(l3,:); rhs2(l3) = 0; 
+A1(l4,:) =   U(l4,:); rhs1(l4) = 0;  
+A2(l4,:) =   V(l4,:); rhs2(l4) = 0;
+A1(l5,:) =   P(l5,:); rhs1(l5) = P2;
+if tanb>1e16
+    A2(l5,:) =   U(l5,:); rhs2(l5) = 0;
+else
+    A2(l5,:) =   cosb*V(l5,:)+sinb*U(l5,:); rhs2(l5) = 0;
+end
+A1(l6,:) =   U(l6,:); rhs1(l6) = 0;  
+A2(l6,:) =   V(l6,:); rhs2(l6) = 0;
+A1(l7,:) =   U(l7,:); rhs1(l7) = 0;  
+A2(l7,:) =   V(l7,:); rhs2(l7) = 0;
+A1(l8,:) =   P(l8,:); rhs1(l8) = P1;
+if tana>1e16
+    A2(l8,:) =   U(l8,:); rhs2(l8) = 0; 
+else
+    A2(l8,:) =   cosa*V(l8,:)-sina*U(l8,:); rhs2(l8) = 0; 
+end
+A1(l9,:) =   U(l9,:); rhs1(l9) = 0;  
+A2(l9,:) =   V(l9,:); rhs2(l9) = 0;
 A = [A1; A2]; rhs = [rhs1; rhs2];
 
 c = A\rhs;                                  % compute a least squares problem
 [psi,uv,p,omega,f,g] = makefuns(c,Hes,Pol);
-delete(h), delete(bd), plotcontours(Z,psi,uv,Pol)
+delete(bd), plotcontours(Z,psi,uv,Pol)
 
 %% Errors on the boundary
 error = A*c-rhs;                            % errors on the boundary
@@ -100,11 +129,11 @@ set(gcf,'units','inches','position',[0,0,8,6])
 
 %% Functions
 function [Hes,R] = VAorthog(Z,n,varargin)   % VA orthogonalization
-% Input:    Z = column vector of sample points
-%           n = degree of polynomial (>=0)
-%           Pol = vector of poles
-% Output:   Hes = cell array of Hessenberg matrices (length 1+length(Pol))
-%           R = matrix of basis vectors
+    % Input:    Z = column vector of sample points
+    %           n = degree of polynomial (>=0)
+    %           Pol = vector of poles
+    % Output:   Hes = cell array of Hessenberg matrices (length 1+length(Pol))
+    %           R = matrix of basis vectors
     M = length(Z); Pol = []; if nargin == 3, Pol = varargin{1}; end
     % First orthogonalize the polynomial part
     Q = ones(M,1); H = zeros(n+1,n);
@@ -128,11 +157,11 @@ function [Hes,R] = VAorthog(Z,n,varargin)   % VA orthogonalization
 end
 
 function [R0,R1] = VAeval(Z,Hes,varargin)   % Vand.+Arnoldi basis construction
-% Input:    Z = column vector of sample points
-%           n = degree of polynomial (>=0)
-%           Pol = vector of poles
-% Output:   R0 = matrix of basis vectors for functions
-%           R1 = matrix of basis vectors for derivatives
+    % Input:    Z = column vector of sample points
+    %           n = degree of polynomial (>=0)
+    %           Pol = vector of poles
+    % Output:   R0 = matrix of basis vectors for functions
+    %           R1 = matrix of basis vectors for derivatives
     M = length(Z); Pol = []; if nargin == 3, Pol = varargin{1}; end
     H = Hes{1}; Hes(1) = []; n = size(H,2);
     Q = ones(M,1); D = zeros(M,1);
