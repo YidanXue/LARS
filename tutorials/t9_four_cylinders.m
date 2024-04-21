@@ -1,10 +1,10 @@
-%% T8. Four cylinders
+%% T9. Four cylinders
 %
 % Yidan Xue, Apr 2024, Oxford
 %
 % This tutorial will introduce how to compute Stokes flow in multiply
-% connected domains of more than one hole with minor changes from the
-% previous tutorial.
+% connected domains of more than one hole with minor changes from previous
+% tutorials.
 
 %% Define the fluid problem
 % We consider the Stokes flow inside a cylinder, which contains three
