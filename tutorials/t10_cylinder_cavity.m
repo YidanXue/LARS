@@ -1,64 +1,66 @@
-%% T9. Four cylinders
+%% T10. Cylinder in a cavity
 %
 % Yidan Xue, Apr 2024, Oxford
 %
-% This tutorial will introduce how to compute Stokes flow in multiply
-% connected domains of more than one hole with minor changes from previous
-% tutorials.
+% In this tutorial, we show how to use the lightning algorithm with the
+% series method.
 
 %% Define the fluid problem
-% We consider the Stokes flow inside a cylinder, which contains three
-% rotating cylinders.
+% We consider the Stokes flow in a cavity driven be a rotating cylinder.
+% Note that we cluster the sample points towards the four corners of the
+% cavity, but we sample equispaced points on the cylinder.
 warning off, LW = 'linewidth'; MS = 'markersize'; FS = 'fontsize'; fs = 16;
-r_out = 1; r_in = 0.2; epsilon = 0.5; m = 200;
-Z_out = r_out*exp(2i*pi*(1:m)'/m);
+w = [1+1i; -1+1i; -1-1i; 1-1i]; r = 0.6; ctr = 0;
+m = 300; s = tanh(linspace(-16,16,m)); 
+Z_out = [1i-s -1-1i*s -1i+s 1+1i*s].';
+Z_in = ctr+r*exp(2i*pi*(1:m)'/m);
 plot(Z_out([1:end 1]),'k',LW,1.2); hold on
-Z_in = {}; ctr = [];
-for j = 1:3
-    z_in = epsilon*exp(j*2i*pi/3)+r_in*exp(2i*pi*(1:m)'/m);
-    plot(z_in([1:end 1]),'k',LW,1.2)
-    Z_in{j} = z_in;
-    ctr = [ctr epsilon*exp(j*2i*pi/3)];
-end
+plot(Z_in([1:end 1]),'k',LW,1.2);
 axis equal off
-fontsize(gca,fs,'points')
-set(gcf,'units','inches','position',[0,0,8,6]), hold off
+
+%% Place the lightning poles
+np = 20;                                    % poles per corner
+dk = 1.5*cluster(np); dc = 1+dk;            % tapered exponential clustering
+Pol = {w(1)*dc, w(2)*dc, w(3)*dc, w(4)*dc};
+plot(cell2mat(Pol),'.r',MS,8);
+plot(real(ctr),imag(ctr),'.b',MS,8);
+axis([-2 2 -2 2]); hold off
 
 %% VA orthogonalization, boundary conditions, and solve the least squares problem
-% For domains with multiple holes, we use a row vector |ctr| containing the
-% centre location of holes (actually a vector of points inside each hole
-% would be sufficient).
-Z = [Z_out;Z_in{1};Z_in{2};Z_in{3}]; 
-out = 1:m; in1 = m+1:2*m; in2 = 2*m+1:3*m; in3 = 3*m+1:4*m;
+% Note that we need to add the poles for VA orthogonalization and function
+% evaluation. Here we plot additional stream functions in light grey to
+% show corner eddies.
+Z = [Z_out;Z_in]; out = 1:4*m; in = 4*m+1:5*m;
 n = 20; nl = 20;                            % poly & Laurent degrees
-Hes = VAorthog(Z,n,ctr,nl);                 % Arnoldi Hessenberg matrices
+Hes = VAorthog(Z,n,ctr,nl,Pol);             % Arnoldi Hessenberg matrices
 
 % boundary conditions
-[A1,rhs1,A2,rhs2,PSI,U,V,P] = makerows(Z,Hes,ctr);  
+[A1,rhs1,A2,rhs2,PSI,U,V,P] = makerows(Z,Hes,ctr,Pol);  
 A1(out,:) =   U(out,:); rhs1(out) = 0;
 A2(out,:) =   V(out,:); rhs2(out) = 0;
-A1(in1,:) =   U(in1,:); rhs1(in1) = -r_in*sin(angle(Z(in1)-ctr(1))); 
-A2(in1,:) =   V(in1,:); rhs2(in1) =  r_in*cos(angle(Z(in1)-ctr(1)));
-A1(in2,:) =   U(in2,:); rhs1(in2) = -r_in*sin(angle(Z(in2)-ctr(2))); 
-A2(in2,:) =   V(in2,:); rhs2(in2) =  r_in*cos(angle(Z(in2)-ctr(2)));
-A1(in3,:) =   U(in3,:); rhs1(in3) = -r_in*sin(angle(Z(in3)-ctr(3))); 
-A2(in3,:) =   V(in3,:); rhs2(in3) =  r_in*cos(angle(Z(in3)-ctr(3)));
+A1(in,:)  =   U(in,:);  rhs1(in) = -r*sin(angle(Z(in)-ctr)); 
+A2(in,:)  =   V(in,:);  rhs2(in) =  r*cos(angle(Z(in)-ctr));
 A = [A1; A2]; rhs = [rhs1; rhs2];
 
 % solution and plot
-c = A\rhs;                                  % solve least-squares problem
-[psi,uv,p,omega,f,g] = makefuns(c,Hes,ctr); % make function handles
-plotcontours(Z_out,Z_in,psi,uv,p,ctr)       % plotting
+[A,rhs] = rowweighting(A,rhs,Z,w);
+c = A\rhs;                                      % solve least-squares problem
+[psi,uv,p,omega,f,g] = makefuns(c,Hes,ctr,Pol); % make function handles
+plotcontours(Z_out,{Z_in},psi,uv,p,ctr,Pol)     % plotting
 
 %% Errors on the boundary
 error = A*c-rhs;
 semilogy(abs(error),'.',MS,8)
-title('Errors on the boundary')
+title('Weighted errors on the boundary')
 grid on, shg
 fontsize(gcf, fs, "points")
 set(gcf,'units','inches','position',[0,0,8,6])
 
 %% functions
+function d = cluster(n)                     
+    nc = ceil(n); d = exp(4*(sqrt(nc:-1:1)-sqrt(nc)));
+end
+
 function [Hes,R] = VAorthog(Z,n,ctr,nl,varargin)  % Vand.+Arnoldi orthogonalization
     % Input:    Z = column vector of sample points
     %           n = degree of polynomial (>=0)
@@ -161,6 +163,13 @@ function [A1,rhs1,A2,rhs2,PSI,U,V,P] = makerows(Z,Hes,ctr,varargin)
     A2 = zeros(M,N); rhs2 = zeros(M,1);
 end
 
+function [A,rhs] = rowweighting(A,rhs,Z,w)
+    dZw = min(abs(Z-w.'),[],2);
+    wt = [dZw; dZw];
+    M2 = 2*length(Z); W = spdiags(wt,0,M2,M2);
+    A = W*A; rhs = W*rhs;
+end
+
 function [psi,uv,p,omega,f,g] = makefuns(c,Hes,ctr,varargin)  % make function handles
     Pol = []; if nargin == 4, Pol = varargin{1}; end
     cc = c(1:end/2) + 1i*c(end/2+1:end);
@@ -213,6 +222,8 @@ function plotcontours(Z_out,Z_in,psi,uv,p,ctr,varargin)
     pmin = min(min(pp)); pmax = max(max(pp));
     lev = pmin+(.1:.1:.9)*(pmax-pmin);
     contour(x,y,pp,lev,'k','linewidth',.6)
+    lev2 = pmin+[.0001 .0004 .0007]*(pmax-pmin);
+    contour(x,y,pp,lev2,CO,[.75 .75 .75],'linewidth',.6)
     if nargin==7, plot(cell2mat(Pol),'.r',MS,8), end
     plot(real(ctr),imag(ctr),'.b',MS,10), plot(real(1./conj(ctr)),imag(1./conj(ctr)),'.b',MS,10)
     hold off, axis equal off, axis([xm+.8*dx*[-1 1] ym+.8*dy*[-1 1]])
