@@ -32,7 +32,7 @@
 % parabolic velocity profiles are imposed on inlet and outlet. A
 % zero-velocity boundary condition is imposed on the walls.
 warning off, LW = 'linewidth'; MS = 'markersize'; FS = 'fontsize'; fs = 16;
-delta = 1; lambda = 0.8;
+delta = 1; lambda = 0.7;
 h0 = 1; L0 = h0/delta;
 w1 = -2*L0-1i*h0; w2 = 2*L0-1i*h0; w3 = 2*L0+1i*h0; w4 = -2*L0+1i*h0;
 m = 300;
@@ -209,5 +209,5 @@ function plotcontours(Z,psi,uv,varargin)   % contour plot
     pp = psi(zz); pp(outside) = NaN; pmin = min(min(pp)); pmax = max(max(pp));
     lev = pmin+(.1:.1:.9)*(pmax-pmin);
     contour(x,y,pp,lev,'k',LW,.6)
-    hold off, axis([xm+.8*dx*[-1 1] ym+.8*dy*[-1 1]])
+    hold off, axis([xm+.6*dx*[-1 1] ym+.8*dy*[-1 1]])
 end
