@@ -1,3 +1,9 @@
+[![made-with-MATLAB](https://img.shields.io/badge/Made%20with-MATLAB_R2023b-orange)]()
+[![GitHub latest commit](https://badgen.net/github/last-commit/YidanXue/LARS)](https://GitHub.com/YidanXue/LARS/commit/)
+[![SISC Paper](https://img.shields.io/badge/DOI-10.1137%2F23M1576876-blue)](
+https://doi.org/10.1137/23M1576876)
+![X (formerly Twitter) Follow](https://img.shields.io/twitter/follow/YidanXue?link=https%3A%2F%2Ftwitter.com%2FYidanXue)
+
 Repository for the paper "Computation of two-dimensional Stokes flows via lightning and AAA rational approximation" by <a href="https://yidanxue.github.io">Yidan Xue</a>, <a href="https://www.maths.ox.ac.uk/people/sarah.waters">Sarah L. Waters</a> and <a href="https://people.maths.ox.ac.uk/trefethen/">Lloyd N. Trefethen</a>. The arXiv preprint can be found at https://arxiv.org/abs/2306.13545. The SISC publication can be found at https://doi.org/10.1137/23M1576876.
 
 Prerequisites
